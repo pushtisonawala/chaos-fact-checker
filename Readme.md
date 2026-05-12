@@ -16,9 +16,28 @@ show "Running" while targeted pods are completely unaffected.
 3. Applies deterministic rules to compare observed vs expected
 4. Outputs a verdict: Confirmed/Mismatch/Inconclusive
 
-## Usage
 
-```bash
-./chaos-checker check --name my-podchaos --namespace default
-```
+## Architecture
+User input: CR name + namespace
+↓
+┌─────────────────────────────┐
+│      Evidence Collectors    │
+│  ① CR status.podRecords     │  ← reads PodChaos CR directly
+│  ② Kubernetes Events        │  ← k8s event stream
+│  ③ Pod status conditions    │  ← live pod state
+└─────────────────────────────┘
+↓
+┌─────────────────────────────┐
+│      Rules Engine           │  ← deterministic, no LLM
+│  if podRecords > 0 → ✅     │
+│  if events only   → ⚠️      │
+│  if nothing       → ❌      │
+└─────────────────────────────┘
+↓
+Verdict output
+
+## Design decisions
+- LLM is explicitly NOT used for verdict — deterministic rules only
+- Reads CR status directly instead of relying on k8s events alone
+- Pluggable collector design — DNSChaos and NetworkChaos next
 
