@@ -22,5 +22,3 @@ show "Running" while targeted pods are completely unaffected.
 ./chaos-checker check --name my-podchaos --namespace default
 ```
 
-## Built as part of LFX Term 2 2026 mentorship preparation
-Chaos Mesh: Runtime Fact Checker for Experiments
