@@ -14,7 +14,7 @@ show "Running" while targeted pods are completely unaffected.
 1. Takes a chaos experiment name as input
 2. Queries Kubernetes pods and events for evidence
 3. Applies deterministic rules to compare observed vs expected
-4. Outputs a verdict: ✅ Confirmed / ❌ Mismatch / ⚠️ Inconclusive
+4. Outputs a verdict: Confirmed/Mismatch/Inconclusive
 
 ## Usage
 
