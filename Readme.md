@@ -11,14 +11,14 @@ Chaos Mesh reports experiment lifecycle, but it does not confirm whether chaos w
 1. Takes a chaos experiment name and namespace as input
 2. Queries Kubernetes for runtime evidence
 3. Applies deterministic rules to compare observed vs expected behavior
-4. Prints a verdict: `Confirmed`, `Partial`, or `Mismatch`
+4. Prints either a human-readable verdict or structured JSON
 
 ## Architecture
 
 The tool follows a small, linear flow instead of a multi-layered system:
 
 ```text
-chaos-checker check --name <experiment> --namespace <ns>
+chaos-checker check --name <experiment> --namespace <ns> --output text
   -> load kubeconfig
   -> create Kubernetes clients
   -> collect evidence
@@ -30,20 +30,47 @@ chaos-checker check --name <experiment> --namespace <ns>
 | --- | --- |
 | CLI entrypoint | `main.go` starts the Cobra command tree. |
 | Command handler | `cmd/check.go` parses flags, loads kubeconfig, and coordinates the check flow. |
-| Evidence collector | Reads Kubernetes events and PodChaos CR `status.experiment.podRecords`. |
-| Verdict logic | Produces `Confirmed`, `Partial`, or `Mismatch` using deterministic rules. |
+| Evidence collector | Reads the PodChaos CR selector and `status.experiment.podRecords`, plus Kubernetes events. |
+| Verdict logic | Produces `matched`, `partial`, or `mismatch` using deterministic rules. |
 
 ### Evidence Sources
 
+- `PodChaos.spec.selector.pods`: source of truth for intended target pods when explicitly listed
 - `PodChaos.status.experiment.podRecords`: strongest signal that Chaos Mesh recorded affected pods
 - Kubernetes events: supporting evidence that injection activity was attempted
-- Pod listing: namespace-level context for the check
+
+### Output Formats
+
+- `--output text`: human-readable terminal summary
+- `--output json`: pretty-printed JSON suitable for CI or dashboards
+
+Example:
+
+```bash
+chaos-checker check --name pod-kill-test --namespace default --output json
+```
+
+Example JSON:
+
+```json
+{
+  "experiment": "pod-kill-test",
+  "chaos_type": "PodChaos",
+  "verdict": "matched",
+  "evidence": {
+    "targeted_pods": ["nginx-abc123"],
+    "affected_pods": ["nginx-abc123"],
+    "events_found": 3
+  },
+  "explanation": "All targeted pods show disruption evidence"
+}
+```
 
 ### Verdict Rules
 
-- `Confirmed`: one or more pod records were found in the PodChaos CR
-- `Partial`: chaos-related events were found, but no pod records were present
-- `Mismatch`: no pod records and no chaos-related events were found
+- `matched`: every targeted pod has disruption evidence
+- `partial`: some disruption evidence was found, but not for every targeted pod
+- `mismatch`: no runtime disruption evidence was found for the targeted pods
 
 ### Current Code Layout
 
